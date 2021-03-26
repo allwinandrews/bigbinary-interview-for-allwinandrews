@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
+import { useParams } from "react-router-dom";
 import { Container } from "reactstrap";
 
 import Table from "@material-ui/core/Table";
@@ -11,10 +12,16 @@ import TableRow from "@material-ui/core/TableRow";
 import { LAUNCH_API } from "../../constants/apiUrls";
 
 import Header from "./Header";
+import PaginationRounded from "./Pagination";
 
 export default function Dashboard() {
+  let { pageNo } = useParams();
   const [tableData, setTableData] = useState([]);
+  const [tableDisplayData, setTableDisplayData] = useState([]);
+  const [pageNumber, setPageNumber] = useState(1);
+  const [totalPages, setTotalPages] = useState("");
 
+  // Function to differentiate and display each launch status
   const getLaunchStatus = (boolean) => {
     switch (boolean) {
       case true:
@@ -26,15 +33,39 @@ export default function Dashboard() {
     }
   };
 
-  useEffect(() => {
+  // Function to slice array according to page number
+  const paginateArray = (array, page_number) => {
+    // human-readable page numbers usually start with 1, so we reduce 1 in the first argument
+    return array.slice((page_number - 1) * 12, page_number * 12);
+  };
+
+  // Function to handle change of pagination
+  const handleChange = (event, value) => {
+    // To chenge url according to page number
+    window.history.replaceState(null, "New Page Title", `/page=${value}`);
+
+    setTableDisplayData(paginateArray(tableData, value));
+    setPageNumber(value);
+  };
+
+  // Function to fetch all launches from LAUNCH_API
+  const getLaunches = () => {
     axios
       .get(LAUNCH_API)
       .then((response) => {
         setTableData(response.data);
+        setTableDisplayData(paginateArray(response.data, pageNo ? pageNo : 1));
+        const pageCount = response.data.length / 12;
+        setTotalPages(Math.ceil(pageCount));
       })
       .catch((error) => {
         console.log(error);
       });
+  };
+
+  useEffect(() => {
+    setPageNumber(pageNo ? parseInt(pageNo) : 1);
+    getLaunches();
   }, []);
 
   return (
@@ -54,7 +85,7 @@ export default function Dashboard() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {tableData.map((object, index) => {
+            {tableDisplayData.map((object, index) => {
               const {
                 flight_number,
                 launch_date_utc,
@@ -69,7 +100,7 @@ export default function Dashboard() {
 
               return (
                 <TableRow key={launch_date_utc + index}>
-                  <TableCell component="th" scope="row">
+                  <TableCell scope="row">
                     {flight_number < 10 ? "0" + flight_number : flight_number}
                   </TableCell>
                   <TableCell align="left">{launch_date_utc}</TableCell>
@@ -84,6 +115,13 @@ export default function Dashboard() {
           </TableBody>
         </Table>
       </Container>
+      {totalPages && (
+        <PaginationRounded
+          pageNumber={pageNumber}
+          handleChange={handleChange}
+          totalPages={totalPages}
+        />
+      )}
     </>
   );
 }
