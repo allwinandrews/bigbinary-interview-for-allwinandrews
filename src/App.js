@@ -8,7 +8,7 @@ function App() {
   return (
     <Router>
       <Switch>
-        <Route exact path="/" component={Dashboard} />
+        <Route exact path={["/", `/page=:pageNo`]} component={Dashboard} />
       </Switch>
     </Router>
   );
